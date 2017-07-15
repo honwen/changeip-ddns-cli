@@ -1,25 +1,24 @@
-FROM alpine:edge
+FROM chenhw2/alpine:base
 MAINTAINER CHENHW2 <https://github.com/chenhw2>
 
-ARG BIN_URL=https://github.com/chenhw2/changeip-ddns-cli/releases/download/v20170420/changeip_linux-amd64-20170420.tar.gz
-ARG TZ=Asia/Hong_Kong
+ARG VER=20170715
+ARG URL=https://github.com/chenhw2/changeip-ddns-cli/releases/download/v$VER/changeip_linux-amd64-$VER.tar.gz
 
-RUN apk add --update --no-cache wget supervisor ca-certificates tzdata \
-    && update-ca-certificates \
-    && ln -sf /usr/share/zoneinfo/$TZ /etc/localtime \
-    && rm -rf /var/cache/apk/*
-
-RUN mkdir -p /opt \
-    && cd /opt \
-    && wget -qO- ${BIN_URL} | tar xz \
+RUN mkdir -p /usr/bin \
+    && cd /usr/bin \
+    && wget -qO- ${URL} | tar xz \
     && mv changeip_* changeip
 
-ENV Username=1234567890 \
-    Password=abcdefghijklmn \
-    Domain=ddns.changeip.com \
-    Redo=0
+USER nobody
 
-ADD Docker_entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+ENV USERNAME=1234567890 \
+    PASSWORD=abcdefghijklmn \
+    DOMAIN=ddns.changeip.com \
+    REDO=0
 
-ENTRYPOINT ["/entrypoint.sh"]
+CMD changeip \
+    --username ${USERNAME} \
+    --password ${PASSWORD} \
+    auto-update \
+    --domain ${DOMAIN} \
+    --redo ${REDO}

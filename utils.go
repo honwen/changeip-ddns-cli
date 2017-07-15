@@ -35,7 +35,7 @@ func getIP() (ip string) {
 	}
 	for i := 0; i < length; i++ {
 		v := <-cchan
-		if len(v) == 0 {
+		if 0 == len(v) {
 			continue
 		}
 		if ipMap[v] >= length/2 {
@@ -51,7 +51,7 @@ func getIP() (ip string) {
 	}
 
 	// Use First ipAPI as failsafe
-	if len(ip) == 0 {
+	if 0 == len(ip) {
 		ip = regexp.MustCompile(regxIP).FindString(wGet(ipAPI[0], 20*minTimeout))
 	}
 	return

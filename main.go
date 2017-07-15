@@ -11,16 +11,16 @@ import (
 	"github.com/urfave/cli"
 )
 
-type AccessKey struct {
+type AUTH struct {
 	Username string
 	Password string
 }
 
-func (ak *AccessKey) isFiled() bool {
+func (ak *AUTH) isFiled() bool {
 	return len(ak.Username) > 0 && len(ak.Password) > 0
 }
 
-func (ak *AccessKey) doDDNSUpdate(fulldomain, ipaddr string) (err error) {
+func (ak *AUTH) doDDNSUpdate(fulldomain, ipaddr string) (err error) {
 	// http://www.changeip.com/accounts/knowledgebase.php?action=displayarticle&id=34
 	uri := "https://nic.ChangeIP.com/nic/update?u=%s&p=%s&hostname=%s&ip=%s"
 	if getDNS(fulldomain) == ipaddr {
@@ -28,14 +28,14 @@ func (ak *AccessKey) doDDNSUpdate(fulldomain, ipaddr string) (err error) {
 	}
 	resp := wGet(fmt.Sprintf(uri, ak.Username, ak.Password, fulldomain, ipaddr), minTimeout*20)
 	if !strings.Contains(resp, "Successful") {
-		err = errors.New(resp)
+		err = errors.New("wGet Err: " + resp)
 	}
 	return
 }
 
 var (
-	accessKey AccessKey
-	version   = "MISSING build version [git hash]"
+	auth    AUTH
+	version = "MISSING build version [git hash]"
 )
 
 func main() {
@@ -63,7 +63,7 @@ func main() {
 					return err
 				}
 				// fmt.Println(c.Command.Name, "task: ", accessKey, c.String("domain"), c.String("ipaddr"))
-				if err := accessKey.doDDNSUpdate(c.String("domain"), c.String("ipaddr")); err != nil {
+				if err := auth.doDDNSUpdate(c.String("domain"), c.String("ipaddr")); err != nil {
 					log.Printf("%+v", err)
 				} else {
 					log.Println(c.String("domain"), c.String("ipaddr"))
@@ -94,7 +94,7 @@ func main() {
 				redoDurtion := c.Int64("redo")
 				for {
 					autoip := getIP()
-					if err := accessKey.doDDNSUpdate(c.String("domain"), autoip); err != nil {
+					if err := auth.doDDNSUpdate(c.String("domain"), autoip); err != nil {
 						log.Printf("%+v", err)
 					} else {
 						log.Println(c.String("domain"), autoip)
@@ -155,9 +155,9 @@ func main() {
 }
 
 func appInit(c *cli.Context) error {
-	accessKey.Username = c.GlobalString("username")
-	accessKey.Password = c.GlobalString("password")
-	if !accessKey.isFiled() {
+	auth.Username = c.GlobalString("username")
+	auth.Password = c.GlobalString("password")
+	if !auth.isFiled() {
 		cli.ShowAppHelp(c)
 		return errors.New("Username/Password is empty")
 	}
