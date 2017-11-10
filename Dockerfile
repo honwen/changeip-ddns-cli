@@ -1,13 +1,12 @@
+FROM golang:alpine as builder
+RUN apk add --update git
+RUN go get github.com/chenhw2/changeip-ddns-cli
+
 FROM chenhw2/alpine:base
 MAINTAINER CHENHW2 <https://github.com/chenhw2>
 
-ARG VER=20170715
-ARG URL=https://github.com/chenhw2/changeip-ddns-cli/releases/download/v$VER/changeip_linux-amd64-$VER.tar.gz
-
-RUN mkdir -p /usr/bin \
-    && cd /usr/bin \
-    && wget -qO- ${URL} | tar xz \
-    && mv changeip_* changeip
+# /usr/bin/changeip-ddns-cli
+COPY --from=builder /go/bin /usr/bin
 
 USER nobody
 
@@ -16,7 +15,7 @@ ENV USERNAME=1234567890 \
     DOMAIN=ddns.changeip.com \
     REDO=0
 
-CMD changeip \
+CMD changeip-ddns-cli \
     --username ${USERNAME} \
     --password ${PASSWORD} \
     auto-update \
