@@ -37,7 +37,7 @@ COMMANDS:
      update       Update ChangeIP's DNS DomainRecords Record
      auto-update  Auto-Update ChangeIP's DNS DomainRecords Record, Get IP using its getip
    GET-IP:
-     getip         Get IP Combine 11 different Web-API
+     getip         Get IP Combine 9 different Web-API
      getdns        Get IP of A domain Combine 5 different DNS-Server
 
 GLOBAL OPTIONS:
