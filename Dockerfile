@@ -1,25 +1,26 @@
-FROM alpine:edge
-MAINTAINER CHENHW2 <https://github.com/chenhw2>
+FROM golang:alpine as builder
+RUN apk add --update git
+RUN go get -u -v \
+        -ldflags "-X main.version=$(curl -sSL https://api.github.com/repos/chenhw2/changeip-ddns-cli/commits/master | \
+            sed -n '1,9{/sha/p; /date/p}' | sed 's/.* \"//g' | cut -c1-10 | tr [a-z] [A-Z] | sed 'N;s/\n/@/g')" \
+        github.com/chenhw2/changeip-ddns-cli
 
-ARG BIN_URL=https://github.com/chenhw2/changeip-ddns-cli/releases/download/v20170420/changeip_linux-amd64-20170420.tar.gz
-ARG TZ=Asia/Hong_Kong
+FROM chenhw2/alpine:base
+LABEL MAINTAINER CHENHW2 <https://github.com/chenhw2>
 
-RUN apk add --update --no-cache wget supervisor ca-certificates tzdata \
-    && update-ca-certificates \
-    && ln -sf /usr/share/zoneinfo/$TZ /etc/localtime \
-    && rm -rf /var/cache/apk/*
+# /usr/bin/changeip-ddns-cli
+COPY --from=builder /go/bin /usr/bin
 
-RUN mkdir -p /opt \
-    && cd /opt \
-    && wget -qO- ${BIN_URL} | tar xz \
-    && mv changeip_* changeip
+USER nobody
 
-ENV Username=1234567890 \
-    Password=abcdefghijklmn \
-    Domain=ddns.changeip.com \
-    Redo=0
+ENV USERNAME=1234567890 \
+    PASSWORD=abcdefghijklmn \
+    DOMAIN=ddns.changeip.com \
+    REDO=0
 
-ADD Docker_entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
-ENTRYPOINT ["/entrypoint.sh"]
+CMD changeip-ddns-cli \
+    --username ${USERNAME} \
+    --password ${PASSWORD} \
+    auto-update \
+    --domain ${DOMAIN} \
+    --redo ${REDO}

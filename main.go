@@ -4,23 +4,27 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
+	"regexp"
+	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/urfave/cli"
 )
 
-type AccessKey struct {
+type AUTH struct {
 	Username string
 	Password string
 }
 
-func (ak *AccessKey) isFiled() bool {
+func (ak *AUTH) isFiled() bool {
 	return len(ak.Username) > 0 && len(ak.Password) > 0
 }
 
-func (ak *AccessKey) doDDNSUpdate(fulldomain, ipaddr string) (err error) {
+func (ak *AUTH) doDDNSUpdate(fulldomain, ipaddr string) (err error) {
 	// http://www.changeip.com/accounts/knowledgebase.php?action=displayarticle&id=34
 	uri := "https://nic.ChangeIP.com/nic/update?u=%s&p=%s&hostname=%s&ip=%s"
 	if getDNS(fulldomain) == ipaddr {
@@ -28,21 +32,25 @@ func (ak *AccessKey) doDDNSUpdate(fulldomain, ipaddr string) (err error) {
 	}
 	resp := wGet(fmt.Sprintf(uri, ak.Username, ak.Password, fulldomain, ipaddr), minTimeout*20)
 	if !strings.Contains(resp, "Successful") {
-		err = errors.New(resp)
+		err = errors.New("wGet Err: " + resp)
 	}
 	return
 }
 
 var (
-	accessKey AccessKey
-	version   = "MISSING build version [git hash]"
+	auth    AUTH
+	version = "MISSING build version [git hash]"
 )
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 func main() {
 	app := cli.NewApp()
 	app.Name = "ChangeIP"
 	app.Usage = "changeip-ddns-cli"
-	app.Version = version
+	app.Version = fmt.Sprintf("Git:[%s] (%s)", strings.ToUpper(version), runtime.Version())
 	app.Commands = []cli.Command{
 		{
 			Name:     "update",
@@ -63,7 +71,7 @@ func main() {
 					return err
 				}
 				// fmt.Println(c.Command.Name, "task: ", accessKey, c.String("domain"), c.String("ipaddr"))
-				if err := accessKey.doDDNSUpdate(c.String("domain"), c.String("ipaddr")); err != nil {
+				if err := auth.doDDNSUpdate(c.String("domain"), c.String("ipaddr")); err != nil {
 					log.Printf("%+v", err)
 				} else {
 					log.Println(c.String("domain"), c.String("ipaddr"))
@@ -80,10 +88,10 @@ func main() {
 					Name:  "domain, d",
 					Usage: "Specific `DomainName`. like ddns.changeip.com",
 				},
-				cli.Int64Flag{
+				cli.StringFlag{
 					Name:  "redo, r",
-					Value: 0,
-					Usage: "redo Auto-Update, every N `Seconds`; Disable if N less than 10",
+					Value: "",
+					Usage: "redo Auto-Update, every N `Seconds`; Disable if N less than 10; End with [Rr] enable random delay: [N, 2N]",
 				},
 			},
 			Action: func(c *cli.Context) error {
@@ -91,10 +99,24 @@ func main() {
 					return err
 				}
 				// fmt.Println(c.Command.Name, "task: ", accessKey, c.String("domain"), c.Int64("redo"))
-				redoDurtion := c.Int64("redo")
+				redoDurtionStr := c.String("redo")
+				if len(redoDurtionStr) > 0 && !regexp.MustCompile(`\d+[Rr]?$`).MatchString(redoDurtionStr) {
+					return errors.New(`redo format: [0-9]+[Rr]?$`)
+				}
+				randomDelay := regexp.MustCompile(`\d+[Rr]$`).MatchString(redoDurtionStr)
+				redoDurtion := 0
+				if randomDelay {
+					// Print Version if exist
+					if !strings.HasPrefix(version, "MISSING") {
+						fmt.Fprintf(os.Stderr, "%s %s\n", strings.ToUpper(c.App.Name), c.App.Version)
+					}
+					redoDurtion, _ = strconv.Atoi(redoDurtionStr[:len(redoDurtionStr)-1])
+				} else {
+					redoDurtion, _ = strconv.Atoi(redoDurtionStr)
+				}
 				for {
 					autoip := getIP()
-					if err := accessKey.doDDNSUpdate(c.String("domain"), autoip); err != nil {
+					if err := auth.doDDNSUpdate(c.String("domain"), autoip); err != nil {
 						log.Printf("%+v", err)
 					} else {
 						log.Println(c.String("domain"), autoip)
@@ -102,7 +124,11 @@ func main() {
 					if redoDurtion < 10 {
 						break // Disable if N less than 10
 					}
-					time.Sleep(time.Duration(redoDurtion) * time.Second)
+					if randomDelay {
+						time.Sleep(time.Duration(redoDurtion+rand.Intn(redoDurtion)) * time.Second)
+					} else {
+						time.Sleep(time.Duration(redoDurtion) * time.Second)
+					}
 				}
 				return nil
 			},
@@ -155,9 +181,9 @@ func main() {
 }
 
 func appInit(c *cli.Context) error {
-	accessKey.Username = c.GlobalString("username")
-	accessKey.Password = c.GlobalString("password")
-	if !accessKey.isFiled() {
+	auth.Username = c.GlobalString("username")
+	auth.Password = c.GlobalString("password")
+	if !auth.isFiled() {
 		cli.ShowAppHelp(c)
 		return errors.New("Username/Password is empty")
 	}

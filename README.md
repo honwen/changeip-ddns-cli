@@ -12,10 +12,10 @@
 $ docker pull chenhw2/changeip-ddns-cli
 
 $ docker run -d \
-    -e "Username=1234567890" \
-    -e "Password=abcdefghijklmn" \
-    -e "Domain=ddns.changeip.com" \
-    -e "Redo=600" \
+    -e "USERNAME=1234567890" \
+    -e "PASSWORD=abcdefghijklmn" \
+    -e "DOMAIN=ddns.changeip.com" \
+    -e "REDO=600" \
     chenhw2/changeip-ddns-cli
 
 ```
@@ -37,7 +37,7 @@ COMMANDS:
      update       Update ChangeIP's DNS DomainRecords Record
      auto-update  Auto-Update ChangeIP's DNS DomainRecords Record, Get IP using its getip
    GET-IP:
-     getip         Get IP Combine 11 different Web-API
+     getip         Get IP Combine 9 different Web-API
      getdns        Get IP of A domain Combine 5 different DNS-Server
 
 GLOBAL OPTIONS:
@@ -49,10 +49,10 @@ GLOBAL OPTIONS:
 ```
 ### CLI Example:
 ```
-changeip -u ${Username} -p ${Password} \
+changeip -u ${USERNAME} -p ${PASSWORD} \
     auto-update --domain ddns.changeip.com
 
-changeip -u ${Username} -p ${Password} \
+changeip -u ${USERNAME} -p ${PASSWORD} \
     update --domain ddns.changeip.com \
     --ipaddr $(ifconfig pppoe-wan | sed -n '2{s/[^0-9]*://;s/[^0-9.].*//p}')
 
